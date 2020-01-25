@@ -6,29 +6,27 @@ const User = require('../models/user');
 
 exports.tasks_get_all = (req, res, next) => {
     Task.find()
-    .select('title description _id date')
+    .select('title description _id date author')
+    .populate('author', '_id')
     .exec()
     .then(docs => {
-        const response = {
+        res.status(200).json({
             count: docs.length,
-            task: docs.map(doc => {
-                return {
-                    title: doc.title,
-                    description: doc.description,
-                    _id: doc.id,
-                    date: doc.date,
-                    request: {
-                        type: 'GET',
-                        url: 'http://localhost:5000/tasks/' + doc._id
-                    }
-                };
-            })
-        };
-        if (docs.length >= 0) {
-            res.status(200).json(response);
-        }else {
-            res.status(404).json({message: "No entries found"})
-        }
+            orders: docs.map(doc => {
+              return {
+                _id: doc._id,
+                title: doc.title,
+                description: doc.description,
+                date: doc.date,
+                author: doc.author,
+                request: {
+                  type: "GET",
+                  url: "http://localhost:5000/tasks/" + doc._id
+                }
+            };
+        })
+    });
+       
     })
     .catch(err => {
         console.log(err);
@@ -39,14 +37,18 @@ exports.tasks_get_all = (req, res, next) => {
 }
 
 exports.tasks_create_task = (req, res, next) => {
+ const id = req.params.userId;  
+    User.findOne({_id:id})
+    .populate('author', '_id')
     const task = new Task({
-        _id: new mongoose.Types.ObjectId(),
+        _id: mongoose.Types.ObjectId(),
         title: req.body.title,
         description: req.body.description,
         date: req.body.date,
-        author:req.user._id
+        author:req.body.author
     });
-    task.save().then(result => {
+   return task.save()
+   .then(result => {
         console.log(result);
         res.status(200).json ({
             message: 'Created Task sucessfully',
@@ -55,6 +57,7 @@ exports.tasks_create_task = (req, res, next) => {
                 description: result.description,
                 _id: result.id,
                 date: result.date,
+                author: result.author,
                 request: {
                     type: 'GET',
                     url: 'http://localhost:5000/tasks/' + result._id
