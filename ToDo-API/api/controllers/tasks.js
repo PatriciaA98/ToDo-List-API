@@ -5,14 +5,15 @@ const Task = require('../models/task');
 const User = require('../models/user');
 
 exports.tasks_get_all = (req, res, next) => {
-    Task.find()
+    userId = req.params.userId
+    Task.find({author: userId})
     .select('title description _id date author')
     .populate('author', '_id')
     .exec()
     .then(docs => {
         res.status(200).json({
             count: docs.length,
-            orders: docs.map(doc => {
+            tasks: docs.map(doc => {
               return {
                 _id: doc._id,
                 title: doc.title,
@@ -21,7 +22,7 @@ exports.tasks_get_all = (req, res, next) => {
                 author: doc.author,
                 request: {
                   type: "GET",
-                  url: "http://localhost:5000/tasks/" + doc._id
+                  url: "http://localhost:5000/tasks/" + doc._id +'/'+ doc.author
                 }
             };
         })
@@ -37,17 +38,17 @@ exports.tasks_get_all = (req, res, next) => {
 }
 
 exports.tasks_create_task = (req, res, next) => {
- const id = req.params.userId;  
-    User.findOne({_id:id})
+    User.findById(req.body.userId)
     .populate('author', '_id')
+    .exec()
     const task = new Task({
         _id: mongoose.Types.ObjectId(),
         title: req.body.title,
         description: req.body.description,
         date: req.body.date,
-        author:req.body.author
-    });
-   return task.save()
+        author:req.body.userId
+   });
+       return task.save()
    .then(result => {
         console.log(result);
         res.status(200).json ({
@@ -60,7 +61,7 @@ exports.tasks_create_task = (req, res, next) => {
                 author: result.author,
                 request: {
                     type: 'GET',
-                    url: 'http://localhost:5000/tasks/' + result._id
+                    url: 'http://localhost:5000/tasks/' + result._id + '/' + result.author
                 }
             }
         });
@@ -74,8 +75,11 @@ exports.tasks_create_task = (req, res, next) => {
 
 exports.tasks_get_task = (req, res, next) => {
     const id = req.params.taskId;
-    Task.findById(id)
+    const user = req.params.userId;
+    Task.find({author: user, _id: id})
+    //Task.findById(id)
     .select('title description _id date')
+    .populate('customer')
     .exec()
     .then(doc =>{
         console.log("From database",doc);
@@ -85,7 +89,7 @@ exports.tasks_get_task = (req, res, next) => {
                 request: {
                     type: 'GET',
                     description: 'Get all tasks',
-                    url: 'http://localhost:5000/tasks'
+                    url: 'http://localhost:5000/tasks/' + user
                 }
             });
         }
@@ -103,18 +107,20 @@ exports.tasks_get_task = (req, res, next) => {
 
 exports.tasks_update_task = (req, res, next) => {
     const id = req.params.taskId;
+    const user = req.params.userId;
+
     const updateOps = {};
     for (const ops of req.body) {
         updateOps[ops.propName] = ops.value;
     }
-    Task.update({_id:  id}, {$set: updateOps})
+    Task.update({author: user, _id:  id}, {$set: updateOps})
     .exec()
     .then(result => {
         res.status(200).json({
             message: 'Task updated successfully',
             request: {
                 type: 'GET',
-                url: 'http://localhost:5000/tasks/' + id
+                url: 'http://localhost:5000/tasks/' + id + '/' + user
             }
         });
     })
@@ -134,8 +140,8 @@ exports.tasks_delete_task = (req, res, next) => {
           request: {
               type: 'POST',
               description: 'Create a new task ',
-              url: 'http://localhost:5000/tasks',
-              body: {title: 'String', description: 'String'}
+              url: 'http://localhost:5000/tasks/' + id,
+              body: {title: 'String', description: 'String', author:'userId'}
           } 
        });
    })

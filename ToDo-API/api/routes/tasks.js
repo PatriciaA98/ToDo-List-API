@@ -8,16 +8,16 @@ const TasksController = require('../controllers/tasks');
 
 
 //Displays all orders stored in database
-router.get("/", checkAuth, TasksController.tasks_get_all);
+router.get("/:userId", checkAuth, TasksController.tasks_get_all);
 
 //Creates a new order
-router.post('/:userId', checkAuth, TasksController.tasks_create_task);
+router.post('/', checkAuth, TasksController.tasks_create_task);
 
 //Displays a given order
-router.get('/:taskId', checkAuth, TasksController.tasks_get_task);
+router.get('/:taskId/:userId', checkAuth, TasksController.tasks_get_task);
 
 //Updates a given product
-router.patch('/:taskId', TasksController.tasks_update_task);
+router.patch('/:taskId/:userId', TasksController.tasks_update_task);
 
 //Deletes a given order
 router.delete('/:taskId', checkAuth, TasksController.tasks_delete_task);
